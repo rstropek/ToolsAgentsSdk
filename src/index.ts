@@ -1,6 +1,4 @@
-import type { Agent } from "@openai/agents";
 import chalk from "chalk";
-import { createStatsAgent } from "./agents/stats.js";
 import { createTriageAgent } from "./agents/triage.js";
 import { processTurn } from "./core/processTurn.js";
 import { createEmptyState } from "./core/state.js";
@@ -21,36 +19,20 @@ async function main(): Promise<void> {
 	const args = process.argv.slice(2);
 	const prompt = parsePromptArg(args);
 
-	const stats = createStatsAgent();
-	const triage = createTriageAgent(stats);
-	// Wire the back-edge after both agents exist so Stats can hand control
-	// back to Triage for non-statistical follow-ups.
-	stats.handoffs.push(triage);
+	const agent = createTriageAgent();
+	attachToolLogging(agent);
 
-	const agentsByName = new Map<string, Agent>([
-		[triage.name, triage],
-		[stats.name, stats],
-	]);
-	for (const agent of agentsByName.values()) {
-		attachToolLogging(agent);
-	}
-
-	const state = createEmptyState(triage.name);
-	const getActiveAgent = (): Agent => {
-		const a = agentsByName.get(state.activeAgent);
-		if (!a) throw new Error(`Unknown active agent: ${state.activeAgent}`);
-		return a;
-	};
+	const state = createEmptyState(agent.name);
 
 	if (prompt !== undefined) {
-		const result = await processTurn(state, getActiveAgent(), prompt);
+		const result = await processTurn(state, agent, prompt);
 		console.log(result.reply);
 		printTraceUrl(result.traceUrl);
 		return;
 	}
 
 	console.log(chalk.cyan("Sensor Chatbot — Function Calling Workshop"));
-	await runRepl(state, getActiveAgent);
+	await runRepl(state, () => agent);
 }
 
 main().catch((err: unknown) => {

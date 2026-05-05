@@ -13,12 +13,6 @@ const envSchema = z.object({
 		.string()
 		.default("true")
 		.transform((v) => v.toLowerCase() === "true"),
-	CODEX_COMMAND: z.string().default("codex"),
-	CODEX_MCP_ARGS: z.string().default("mcp-server"),
-	CODEX_MODEL: z.string().default("gpt-5.4"),
-	CODEX_REASONING_EFFORT: z
-		.enum(["minimal", "low", "medium", "high"])
-		.default("high"),
 });
 
 const parsed = envSchema.safeParse(process.env);
