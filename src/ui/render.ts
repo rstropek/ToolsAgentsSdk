@@ -22,6 +22,9 @@ export function attachToolLogging(agent: Agent): void {
 	agent.on("agent_tool_end", (_ctx, tool, result) => {
 		console.error(chalk.yellow(`← tool ${tool.name} ${preview(result)}`));
 	});
+	agent.on("agent_handoff", (_ctx, nextAgent) => {
+		console.error(chalk.magenta(`⇄ handoff ${agent.name} → ${nextAgent.name}`));
+	});
 }
 
 export function printAssistant(text: string, agentName: string): void {

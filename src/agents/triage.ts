@@ -1,6 +1,9 @@
 import { Agent } from "@openai/agents";
 import { config } from "../config.js";
 import { getTemperaturesTool, listSensorsTool } from "../tools/sensors.js";
+import type { createStatsAgent } from "./stats.js";
+
+type StatsAgent = ReturnType<typeof createStatsAgent>;
 
 const INSTRUCTIONS = `You are a sensor monitoring assistant for a small home installation.
 
@@ -12,10 +15,13 @@ Guidelines:
 - If you do not yet know a sensor's ID, call \`list_sensors\` first, then call \`get_temperatures\` with the resolved ID.
 - When the user asks about MULTIPLE sensors at once (e.g. "compare all rooms yesterday"), issue the necessary \`get_temperatures\` calls in parallel rather than sequentially. One tool call per (sensor, date) pair.
 - Date format is ISO YYYY-MM-DD. Resolve relative phrasing like "yesterday" against the user's local date.
-- When the user asks something you cannot answer with the available tools, briefly say so. Never invent readings.`;
 
-export function createTriageAgent(): Agent {
-	return new Agent({
+Handoff rules:
+- For analytical questions — averages, standard deviation, outlier detection, comparisons over time, or any computation over readings — first make sure the relevant readings have been fetched via \`get_temperatures\`, then HAND OFF to the Stats specialist.
+- For everything else, answer directly. Never invent readings.`;
+
+export function createTriageAgent(stats: StatsAgent) {
+	return Agent.create({
 		name: "Triage",
 		instructions: INSTRUCTIONS,
 		model: config.TRIAGE_MODEL,
@@ -23,5 +29,6 @@ export function createTriageAgent(): Agent {
 			reasoning: { effort: config.REASONING_EFFORT },
 		},
 		tools: [listSensorsTool, getTemperaturesTool],
+		handoffs: [stats],
 	});
 }

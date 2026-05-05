@@ -36,8 +36,15 @@ export async function runRepl(
 			if (input.length === 0) continue;
 			if (input === "/exit" || input === "/quit") break;
 			if (input === "/help") {
-				console.log(chalk.dim("/exit  quit the REPL"));
-				console.log(chalk.dim("/help  show this help"));
+				console.log(chalk.dim("/exit   quit the REPL"));
+				console.log(chalk.dim("/help   show this help"));
+				console.log(chalk.dim("/state  print the current conversation state"));
+				continue;
+			}
+			if (input === "/state") {
+				console.log(chalk.dim(`active agent: ${state.activeAgent}`));
+				console.log(chalk.dim(`history items: ${state.history.length}`));
+				console.log(JSON.stringify(state.history, null, 2));
 				continue;
 			}
 
