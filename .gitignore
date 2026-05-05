@@ -1,0 +1,7 @@
+node_modules
+.env
+dist
+coverage
+prompt.md
+package-lock.json
+README.md
