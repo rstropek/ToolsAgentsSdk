@@ -1,7 +1,9 @@
 import chalk from "chalk";
+import { createLibraryAgent } from "./agents/library.js";
 import { createTriageAgent } from "./agents/triage.js";
 import { processTurn } from "./core/processTurn.js";
 import { createEmptyState } from "./core/state.js";
+import { createLibraryFsMcpServer } from "./mcp/filesystem.js";
 import { attachToolLogging, printTraceUrl } from "./ui/render.js";
 import { runRepl } from "./ui/repl.js";
 
@@ -19,20 +21,34 @@ async function main(): Promise<void> {
 	const args = process.argv.slice(2);
 	const prompt = parsePromptArg(args);
 
-	const agent = createTriageAgent();
-	attachToolLogging(agent);
+	const libraryFs = createLibraryFsMcpServer();
+	console.error(chalk.dim("Starting filesystem MCP server…"));
+	await libraryFs.connect();
+	console.error(chalk.dim("Filesystem MCP server ready."));
 
-	const state = createEmptyState(agent.name);
+	try {
+		const library = createLibraryAgent(libraryFs);
+		const triage = createTriageAgent(library);
+		// Tool logging on both: Triage logs the `shell` and `library` calls,
+		// Library logs the filesystem MCP calls it makes inside its own runs.
+		attachToolLogging(triage);
+		attachToolLogging(library);
 
-	if (prompt !== undefined) {
-		const result = await processTurn(state, agent, prompt);
-		console.log(result.reply);
-		printTraceUrl(result.traceUrl);
-		return;
+		const state = createEmptyState(triage.name);
+
+		if (prompt !== undefined) {
+			const result = await processTurn(state, triage, prompt);
+			console.log(result.reply);
+			printTraceUrl(result.traceUrl);
+			return;
+		}
+
+		console.log(chalk.cyan("Sensor Chatbot — Function Calling Workshop"));
+		await runRepl(state, () => triage);
+	} finally {
+		console.error(chalk.dim("Stopping filesystem MCP server…"));
+		await libraryFs.close();
 	}
-
-	console.log(chalk.cyan("Sensor Chatbot — Function Calling Workshop"));
-	await runRepl(state, () => agent);
 }
 
 main().catch((err: unknown) => {
